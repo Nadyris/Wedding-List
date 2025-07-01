@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wedding Gift List</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+        }
+        .gift-list {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 10px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        .gift-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #ddd;
+        }
+        .gift-item:last-child {
+            border-bottom: none;
+        }
+        .reserve-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .unreserve-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            text-align: center;
+            border-radius: 10px;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover {
+            color: black;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        .others-section {
+            margin-top: 10px;
+            text-align: left;
+        }
+        .others-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .reserved-by {
+            font-size: 0.8em;
+            font-style: italic;
+            color: #666;
+        }
+        .confirm-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .confirm-btn:hover {
+            background-color: #0056b3;
+        }
+        .reserve-btn:hover {
+            background-color: #218838;
+        }
+        .unreserve-btn:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <h1>Wedding Gift List</h1>
+    <p>Pilih hadiah yang anda nak beri dan tekan "Reserved" untuk lock hadiah tersebut. Anda juga boleh "Unreserved" jika tukar fikiran.</p>
+    <p style="font-size: 0.7em; font-style: italic;">Sumbangan anda adalah satu bentuk sedekah yang amat kami hargai. Semoga Allah membalas jasa baik dan kemurahan hati anda dengan keberkatan dan rahmat yang berlipat ganda. Ameen.</p>
+    <div class="gift-list" id="giftList">
+        <p>Loading gift list...</p>
+    </div>
+    
+    <!-- Modal untuk tambah nama pemesan -->
+    <div id="reserveModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Reserve Gift</h2>
+            <input type="text" id="giftNameInput" placeholder="Gift Name" readonly>
+            <input type="text" id="reserverNameInput" placeholder="Your Name (Optional)">
+            <button class="confirm-btn" onclick="confirmReserve()">Confirm</button>
+        </div>
+    </div>
+
+    <script>
+        let gifts = [];
+        const giftListDiv = document.getElementById('giftList');
+        const modal = document.getElementById('reserveModal');
+        const closeSpan = document.getElementsByClassName('close')[0];
+        let currentReserveIndex = -1;
+
+        // Default gift list
+        const defaultGifts = [
+            { name: "Set Pinggan", reserved: false, reserver: "" },
+            { name: "Rice Cooker", reserved: false, reserver: "" },
+            { name: "Towel Set", reserved: false, reserver: "" },
+            { name: "Blender", reserved: false, reserver: "" },
+            { name: "Vacuum Cleaner", reserved: false, reserver: "" },
+            { name: "Iron", reserved: false, reserver: "" },
+            { name: "Microwave", reserved: false, reserver: "" },
+            { name: "Kettle", reserved: false, reserver: "" },
+            { name: "Toaster", reserved: false, reserver: "" },
+            { name: "Air Fryer", reserved: false, reserver: "" }
+        ];
+
+        // Load gift list from localStorage or use default
+        function loadGifts() {
+            const savedGifts = localStorage.getItem('weddingGiftList');
+            if (savedGifts) {
+                gifts = JSON.parse(savedGifts);
+            } else {
+                gifts = defaultGifts;
+                saveToLocalStorage();
+            }
+            renderGiftList();
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadGifts();
+        });
+
+        function renderGiftList() {
+            giftListDiv.innerHTML = '';
+            gifts.forEach((gift, index) => {
+                const giftItemDiv = document.createElement('div');
+                giftItemDiv.classList.add('gift-item');
+                giftItemDiv.innerHTML = `
+                    <div>
+                        <span>${gift.name}</span>
+                        ${gift.reserved && gift.reserver ? `<div class="reserved-by">(Reserved by ${gift.reserver})</div>` : ''}
+                    </div>
+                    <button class="${gift.reserved ? 'unreserve-btn' : 'reserve-btn'}" onclick="toggleReserve(${index})">
+                        ${gift.reserved ? 'Unreserve' : 'Reserve'}
+                    </button>
+                `;
+                giftListDiv.appendChild(giftItemDiv);
+            });
+        }
+
+        function toggleReserve(index) {
+            if (gifts[index].reserved) {
+                // Unreserve the gift
+                gifts[index].reserved = false;
+                gifts[index].reserver = "";
+                saveToLocalStorage();
+                renderGiftList();
+            } else {
+                // Show modal to reserve
+                currentReserveIndex = index;
+                document.getElementById('giftNameInput').value = gifts[index].name;
+                document.getElementById('reserverNameInput').value = "";
+                modal.style.display = "block";
+            }
+        }
+
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem('weddingGiftList', JSON.stringify(gifts));
+            } catch (error) {
+                console.error("Error saving to localStorage:", error);
+                alert("Error saving data. Please check your browser settings.");
+            }
+        }
+
+        function confirmReserve() {
+            const reserverName = document.getElementById('reserverNameInput').value.trim();
+            if (currentReserveIndex >= 0) {
+                gifts[currentReserveIndex].reserved = true;
+                gifts[currentReserveIndex].reserver = reserverName || "Anonymous";
+                modal.style.display = "none";
+                saveToLocalStorage();
+                renderGiftList();
+                currentReserveIndex = -1;
+            }
+        }
+
+        // Handle modal close events
+        closeSpan.onclick = function() {
+            modal.style.display = "none";
+        }
+
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        // Handle Enter key in the name input
+        document.getElementById('reserverNameInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                confirmReserve();
+            }
+        });
+    </script>
+</body>
+</html>
